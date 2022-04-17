@@ -2,13 +2,13 @@ const test_params = DocumentApp.openById("1iqCTejm6Nb1L-WzUyM30n9zlPYBpQKEEhSscQ
                               getBody().getText();
 var email_pattern = /SENDEREMAIL:(.*)\n/g;
 var template_pattern = /TEMPLATEID:(.*)\n/g;
-var outdoc_pattern = /OUTDOC:(.*)\n/g;
+var outdoc_pattern = /TEMPDOC:(.*)\n/g;
 const TEMPLATE_ID_TEST = template_pattern.exec(test_params)[1];
 const SENDER_TEST = email_pattern.exec(test_params)[1];
-const OUTDOC_TEST = outdoc_pattern.exec(test_params)[1];
+const TEMPDOC_TEST = outdoc_pattern.exec(test_params)[1];
 
 /**
- * Abstract Class VolunteerSite.
+ * Abstract Class VolunteerSite
  *
  * @class VolunteerSite
  */
@@ -51,7 +51,7 @@ class VolunteerSite {
 }
 
 /**
- * Concrete Class VolunteerSiteNoSeparateAuth.
+ * Concrete Class VolunteerSiteNoSeparateAuth
  *
  * @class VolunteerSiteNoSeparateAuth
  */
@@ -87,7 +87,7 @@ class VolunteerSiteNoSeparateAuth extends VolunteerSite {
 }
 
 /**
- * Concrete Class VolunteerSiteSeparateAuth.
+ * Concrete Class VolunteerSiteSeparateAuth
  *
  * @class VolunteerSiteSeparateAuth
  */
@@ -120,7 +120,7 @@ class VolunteerSiteSeparateAuth extends VolunteerSite {
 }
 
 /**
- * Concrete Class Idealist.
+ * Concrete Class Idealist
  *
  * @class Idealist
  */
@@ -138,7 +138,7 @@ class Idealist extends VolunteerSiteSeparateAuth {
 }
 
 /**
- * Concrete Class VolunteerMatch.
+ * Concrete Class VolunteerMatch
  *
  * @class VolunteerMatch
  */
@@ -157,12 +157,10 @@ class VolunteerMatch extends VolunteerSiteNoSeparateAuth {
 
 // TEST
 function doGet() {
-  var ideal = new Idealist(TEMPLATE_ID_TEST, OUTDOC_TEST);
+  var ideal = new Idealist(TEMPLATE_ID_TEST, TEMPDOC_TEST);
   ideal.getNewMatches();
   ideal.outputToDoc();
-  var volmatch = new VolunteerMatch(TEMPLATE_ID_TEST, OUTDOC_TEST);
+  var volmatch = new VolunteerMatch(TEMPLATE_ID_TEST, TEMPDOC_TEST);
   volmatch.getNewMatches();
   volmatch.autoReply();
 }
-
-doGet();
