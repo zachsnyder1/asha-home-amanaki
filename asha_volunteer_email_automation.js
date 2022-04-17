@@ -109,8 +109,8 @@ class VolunteerSiteSeparateAuth extends VolunteerSite {
       var keys = Object.keys(this.extraction_dict);
       var k = 0;
       for (k = 0; k < keys.length; k++) {
-        updated_body_text += this.site_name + m.toString() + 
-                             "::>" + this.values_dict[keys[k]] + "<::\n";
+        updated_body_text += this.site_name + "::>" + 
+                             this.values_dict[keys[k]] + "<::\n";
       message.star();
       message.markRead();
       }
