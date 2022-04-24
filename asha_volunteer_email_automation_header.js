@@ -29,8 +29,8 @@ class VolunteerSite {
   // METHOD: get new email matches, based on sender and subject
   getNewMatches() {
     var searchops = "from:" + this.sender_search +
-                                           " subject:\"" + this.subj_search + "\"" +
-                                           " is:unread";
+                              " subject:\"" + this.subj_search + "\"" +
+                              " is:unread";
     var threads = GmailApp.search(searchops);
     var t = 0;
     for (t = 0; t < threads.length; t++) {
@@ -38,14 +38,15 @@ class VolunteerSite {
     }
   }
   // METHOD: Given a message, extract values
-  extractFromMessage(message) {
+  extractFromMessage(message_body) {
     var keys = Object.keys(this.extraction_dict);
     var k = 0;
     for (k = 0; k < keys.length; k++) {
       // find and return a value from the message, based on
       // the substrings that bracket the value
       var search_pattern = this.extraction_dict[keys[k]];
-      this.values_dict[keys[k]] = search_pattern.exec(message.getPlainBody())[1];
+      var search_result = search_pattern.exec(message_body);
+      this.values_dict[keys[k]] = search_result[1];
     }
   }
 }
@@ -67,7 +68,9 @@ class VolunteerSiteNoSeparateAuth extends VolunteerSite {
     var m = 0;
     for (m = 0; m < this.matches.length; m++) {
       var message = this.matches[m].getMessages()[0];
-      this.extractFromMessage(message);
+      message.star();
+      this.matches[m].markRead();
+      this.extractFromMessage(message.getPlainBody());
       // load the template text
       var response_body = template.getBody().getText();
       // perform replacement of the template tags
@@ -80,8 +83,6 @@ class VolunteerSiteNoSeparateAuth extends VolunteerSite {
                                                          this.values_dict[this.key_name],
                                                          response_body);
       auto_email_to_volunteer.send();
-      message.star();
-      message.markRead();
     }
   }
 }
@@ -95,27 +96,41 @@ class VolunteerSiteSeparateAuth extends VolunteerSite {
   constructor() {
     super();
     this.out_doc_id = null;
+    this.html_response = null;
   }
-  // METHOD: output to Google Doc, for Selenium access
-  outputToDoc() {
-    // open output doc
-    var outdoc_body = DocumentApp.openById(this.out_doc_id).getBody();
-    var updated_body_text = outdoc_body.getText();
-    // for each message, append volunteer info to the outdoc
+  // METHOD: start a "volunteer signups" div in the
+  // provided HTML response
+  static initResponseHtml(html) {
+    html.append("<div id=\"volunteer_signups\">");
+  }
+  // METHOD: finish a "volunteer signups" div in the
+  // provided HTML response
+  static finalizeResponseHTML(html) {
+    html.append("</div>");
+  }
+  // METHOD: append to HTML object, for Selenium access
+  outputToResponse() {
+    // for each message, append volunteer info to the HTML obj
+    var response_text = "";
     var m = 0;
     for (m = 0; m < this.matches.length; m++) {
       var message = this.matches[m].getMessages()[0];
-      this.extractFromMessage(message);
+      message.star();
+      this.matches[m].markRead();
+      this.extractFromMessage(message.getPlainBody());
       var keys = Object.keys(this.extraction_dict);
       var k = 0;
+      // volunteer entries in HTML response are wrapped in <p> w/ id
+      response_text += "<p class=\"volunteer_item\">" + this.site_name + ":";
       for (k = 0; k < keys.length; k++) {
-        updated_body_text += this.site_name + "::>" + 
-                             this.values_dict[keys[k]] + "<::\n";
-      message.star();
-      message.markRead();
+        response_text += keys[k] + "=" + this.values_dict[keys[k]];
+        if((k+1) != keys.length) {
+          response_text += ",";
+        }
       }
+      response_text += "</p>";
     }
-    outdoc_body.setText(updated_body_text);
+    this.html_response.append(response_text);
   }
 }
 
@@ -125,15 +140,33 @@ class VolunteerSiteSeparateAuth extends VolunteerSite {
  * @class Idealist
  */
 class Idealist extends VolunteerSiteSeparateAuth {
-  constructor(template_doc_id, out_doc_id) {
+  constructor(template_doc_id, html) {
     super();
     this.subj_search = "You have a new applicant to review on Idealist!";
     this.sender_search = SENDER_TEST //"support@idealist.org";
-    this.extraction_dict[this.key_role] = /You can log in to see their information here:\n>\n> (.*)\n/g;
-    this.extraction_dict[this.key_name] = /> \[(.*)\]\(/i;
+    this.extraction_dict[this.key_role] = /You can log in to see their information here:\n>\n> (.*)\n/;
+    this.extraction_dict[this.key_name] = /> \[(.*)\]\(/;
     this.template_doc_id = template_doc_id;
-    this.out_doc_id = out_doc_id;
+    this.html_response = html;
     this.site_name = "Idealist";
+  }
+}
+
+/**
+ * Concrete Class GiftPulse
+ *
+ * @class GiftPulse
+ */
+class GiftPulse extends VolunteerSiteSeparateAuth {
+  constructor(template_doc_id, html) {
+    super();
+    /*this.subj_search = "";
+    this.sender_search = SENDER_TEST //"";
+    this.extraction_dict[this.key_role] = /You can log in to see their information here:\n>\n> (.*)\n/g;
+    this.extraction_dict[this.key_name] = /> \[(.*)\]\(/i;*/
+    this.template_doc_id = template_doc_id;
+    this.html_response = html;
+    this.site_name = "GiftPulse";
   }
 }
 
@@ -143,24 +176,30 @@ class Idealist extends VolunteerSiteSeparateAuth {
  * @class VolunteerMatch
  */
 class VolunteerMatch extends VolunteerSiteNoSeparateAuth {
-  constructor(template_doc_id, out_doc_id) {
+  constructor(template_doc_id) {
     super();
     this.subj_search = "Someone wants to help: ";
     this.sender_search = SENDER_TEST //"noreply@volunteermatch.org";
-    this.extraction_dict[this.key_role] = /Title: (.*)\n/g;
-    this.extraction_dict[this.key_name] = /Name: (.*)\n/g;
-    this.extraction_dict[this.key_email] = /Email: (.*)\n/g;
+    this.extraction_dict[this.key_role] = /Title: (.*)\n/;
+    this.extraction_dict[this.key_name] = /Name: (.*)\n/;
+    this.extraction_dict[this.key_email] = /Email: (.*)\n/;
     this.template_doc_id = template_doc_id;
-    this.out_doc_id = out_doc_id;
   }
 }
 
-// TEST
-function doGet() {
-  var ideal = new Idealist(TEMPLATE_ID_TEST, TEMPDOC_TEST);
-  ideal.getNewMatches();
-  ideal.outputToDoc();
-  var volmatch = new VolunteerMatch(TEMPLATE_ID_TEST, TEMPDOC_TEST);
-  volmatch.getNewMatches();
-  volmatch.autoReply();
+/**
+ * Concrete Class Benevity
+ *
+ * @class Benevity
+ */
+class Benevity extends VolunteerSiteNoSeparateAuth {
+  constructor(template_doc_id) {
+    super();
+    /*this.subj_search = "";
+    this.sender_search = SENDER_TEST //"";
+    this.extraction_dict[this.key_role] = /Title: (.*)\n/g;
+    this.extraction_dict[this.key_name] = /Name: (.*)\n/g;
+    this.extraction_dict[this.key_email] = /Email: (.*)\n/g;
+    this.template_doc_id = template_doc_id;*/
+  }
 }
