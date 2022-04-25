@@ -6,20 +6,32 @@ var outdoc_pattern = /TEMPDOC:(.*)\n/g;
 const TEMPLATE_ID_TEST = template_pattern.exec(test_params)[1];
 const SENDER_TEST = email_pattern.exec(test_params)[1];
 const TEMPDOC_TEST = outdoc_pattern.exec(test_params)[1];
+const RESPONSE_SUBJECT = "Thanks for signing up to volunteer!"
 
 /**
- * Abstract Class VolunteerSite
+ * Abstract Class AbstractVolunteerSiteProperties
  *
- * @class VolunteerSite
+ * @class AbstractVolunteerSiteProperties
  */
-class VolunteerSite {
-  // set template tag constants (also used in extraction dictionaries as keys)
+class AbstractVolunteerSiteProperties {
   constructor() {
     this.key_role = "||VOLUNTEER ROLE||";
     this.key_name = "||VOLUNTEER NAME||";
     this.key_email = "||VOLUNTEER EMAIL||";
     this.extraction_dict = {};
     this.values_dict = {};
+  }
+}
+
+/**
+ * Abstract Class VolunteerSite
+ *
+ * @class VolunteerSite
+ */
+class VolunteerSite extends AbstractVolunteerSiteProperties {
+  // set template tag constants (also used in extraction dictionaries as keys)
+  constructor() {
+    super();
     this.subj_search = null;
     this.sender_search = null;
     this.matches = [];
@@ -61,7 +73,7 @@ class VolunteerSiteNoSeparateAuth extends VolunteerSite {
     super();
   }
   // METHOD: Auto-reply to matched messages
-  autoReply() {
+  autoReply(subject) {
     // retrieve the template doc based on its ID
     var template = DocumentApp.openById(this.template_doc_id);
     // for each message, perform all replacements in replacement dict
@@ -80,7 +92,7 @@ class VolunteerSiteNoSeparateAuth extends VolunteerSite {
         response_body = response_body.replaceAll(keys[k], this.values_dict[keys[k]]);
       }
       var auto_email_to_volunteer = GmailApp.createDraft(this.values_dict[this.key_email],
-                                                         this.values_dict[this.key_name],
+                                                         subject,
                                                          response_body);
       auto_email_to_volunteer.send();
     }
@@ -201,5 +213,31 @@ class Benevity extends VolunteerSiteNoSeparateAuth {
     this.extraction_dict[this.key_name] = /Name: (.*)\n/g;
     this.extraction_dict[this.key_email] = /Email: (.*)\n/g;
     this.template_doc_id = template_doc_id;*/
+  }
+}
+
+class SeparateAuthSignup extends AbstractVolunteerSiteProperties {
+  constructor(template_doc_id, name, email, role) {
+    super();
+    this.template_doc_id = template_doc_id;
+    this.extraction_dict[this.key_name] = name;
+    this.extraction_dict[this.key_email] = email;
+    this.extraction_dict[this.key_role] = role;
+  }
+  // METHOD: send message
+  autoReply(subject) {
+    // retrieve the template doc based on its ID
+    var template = DocumentApp.openById(this.template_doc_id);
+    var response_body = template.getBody().getText();
+    // perform replacement of the template tags
+    var keys = Object.keys(this.extraction_dict);
+    var k = 0;
+    for (k = 0; k < keys.length; k++) {
+      response_body = response_body.replaceAll(keys[k], this.extraction_dict[keys[k]]);
+    }
+    var auto_email_to_volunteer = GmailApp.createDraft(this.extraction_dict[this.key_email],
+                                                       subject,
+                                                       response_body);
+    auto_email_to_volunteer.send();
   }
 }
