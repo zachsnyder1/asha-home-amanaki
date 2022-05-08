@@ -57,7 +57,9 @@ class VolunteerSite extends AbstractVolunteerSiteProperties {
       // find and return a value from the message, based on
       // the substrings that bracket the value
       var search_pattern = this.extraction_dict[keys[k]];
+      console.log("Search pattern: " + search_pattern);
       var search_result = search_pattern.exec(message_body);
+      console.log("Search result: " + search_result);
       this.values_dict[keys[k]] = search_result[1];
     }
   }
@@ -129,6 +131,7 @@ class VolunteerSiteSeparateAuth extends VolunteerSite {
       var message = this.matches[m].getMessages()[0];
       message.star();
       this.matches[m].markRead();
+      console.log("Plain body: " + message.getPlainBody());
       this.extractFromMessage(message.getPlainBody());
       var keys = Object.keys(this.extraction_dict);
       var k = 0;
@@ -142,6 +145,7 @@ class VolunteerSiteSeparateAuth extends VolunteerSite {
       }
       response_text += "</p>";
     }
+    console.log("HTML response: " + response_text);
     this.html_response.append(response_text);
   }
 }
@@ -165,20 +169,20 @@ class Idealist extends VolunteerSiteSeparateAuth {
 }
 
 /**
- * Concrete Class GiftPulse
+ * Concrete Class GivePulse
  *
- * @class GiftPulse
+ * @class GivePulse
  */
-class GiftPulse extends VolunteerSiteSeparateAuth {
+class GivePulse extends VolunteerSiteSeparateAuth {
   constructor(template_doc_id, html) {
     super();
-    /*this.subj_search = "";
-    this.sender_search = SENDER_TEST //"";
-    this.extraction_dict[this.key_role] = /You can log in to see their information here:\n>\n> (.*)\n/g;
-    this.extraction_dict[this.key_name] = /> \[(.*)\]\(/i;*/
+    this.subj_search = "updated registration for";
+    this.sender_search = SENDER_TEST //"notification@givepulse.com";
+    this.extraction_dict[this.key_role] = /has just registered to \[(.*)\]\(.*\) with \[Asha/i;
+    this.extraction_dict[this.key_name] = /> (.*) has just registered to \[/i;
     this.template_doc_id = template_doc_id;
     this.html_response = html;
-    this.site_name = "GiftPulse";
+    this.site_name = "Givepulse";
   }
 }
 

@@ -14,10 +14,9 @@ function doGet(e) {
     VolunteerSiteSeparateAuth.initResponseHtml(html);
     ideal.getNewMatches();
     ideal.outputToResponse();
-    /*var gp = new GiftPulse(TEMPLATE_ID_TEST, html);
+    var gp = new GivePulse(TEMPLATE_ID_TEST, html);
     gp.getNewMatches();
     gp.outputToResponse();
-    */
     VolunteerSiteSeparateAuth.finalizeResponseHTML(html);
     html.append("<p id=\"script_complete\">AutoReplySeparateAuth complete<\p>");
   } else if (e["parameters"]["func"] == "SendAutoReply") {
