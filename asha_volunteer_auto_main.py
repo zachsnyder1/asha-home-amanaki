@@ -8,8 +8,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 
-WEBAPP_MAIN_URL = "https://script.google.com/macros/s/AKfycbxpstvpuu04GVGWjbzqqhTevZZAO-BAf4dMg45bXsWMQcZluwWieaT6s07AVbHKXjFVug/exec"
-IMPLICIT_WAIT_DURATION = 5
+WEBAPP_MAIN_URL = "https://script.google.com/macros/s/AKfycbw57Zc938QBa5t0hbyGm4XJp04kPRco9bZ09Dzf3vGGrrpPJleYnBOTTlqlbi67LJ9hSg/exec"
+IMPLICIT_WAIT_DURATION = 10
+EXPLICIT_WAIT_DURATION = 5
+SHORT_EXPLICIT_WAIT = 2
 NEW_SIGNUP_REGEX = '(\\w+):\\|\\|VOLUNTEER ROLE\\|\\|=([\\w\\s]+),\\|\\|VOLUNTEER NAME\\|\\|=([\\w\\s]+)'
 IDEALIST_URL = "https://www.idealist.org/en/"
 GIVEPULSE_URL = "https://www.givepulse.com/"
@@ -28,7 +30,7 @@ def gmail_login(driver, gmail_un, gmail_pw):
   )
   elem.send_keys(gmail_un + Keys.ENTER)
   # Next, enter password
-  time.sleep(IMPLICIT_WAIT_DURATION)
+  time.sleep(EXPLICIT_WAIT_DURATION)
   elem = WebDriverWait(driver, IMPLICIT_WAIT_DURATION).until(
     EC.presence_of_element_located((By.CLASS_NAME, "zHQkBf"))
   )
@@ -59,20 +61,36 @@ def idealist_click_manage_listings(driver):
     if "Hi, " in menu.text:
       menu.click()
       break
-  time.sleep(1)
+  time.sleep(EXPLICIT_WAIT_DURATION)
   # locate the Asha Home Amanaki organization link
   dropdown_links = driver.find_elements(By.XPATH, "//a[contains(@class, 'PageHeaderDropdownMenu__NavLink-sc-zdvi5-0-g')]")
   for link in dropdown_links:
     if "Asha Hope Amanaki" in link.text:
       link.click()
       break
-  time.sleep(3)
+  time.sleep(EXPLICIT_WAIT_DURATION)
   # click Manage Listings on side bar
   sidebar_links = driver.find_elements(By.CLASS_NAME, "DashboardSidebarSection__StyledSidebarLink-sc-1b2a90m-1")
   for link in sidebar_links:
     if "Manage Listings" in link.text:
       link.click()
-      time.sleep(3)
+      time.sleep(EXPLICIT_WAIT_DURATION)
+      
+def click_give_pulse_manage_registrations(driver):
+  time.sleep(SHORT_EXPLICIT_WAIT)
+  nav = WebDriverWait(driver, IMPLICIT_WAIT_DURATION).until(
+    EC.presence_of_element_located((By.ID, "yii_bootstrap_collapse_0"))
+  )
+  dropdown_links = nav.find_elements(By.XPATH, ".//a")
+  for link in dropdown_links:
+    if "Manage" in link.text:
+      link.click()
+  possible_links = nav.find_elements(By.TAG_NAME, "a")
+  # click "Registration" link
+  for link in possible_links:
+    if "Registrations" in link.text:
+      link.click()
+      break
 
 def idealist_admin_search(driver, search_str):
   # perform admin search for volunteer role
@@ -95,8 +113,11 @@ def main():
   gmail_pw = os.environ.get('gmailPassword')
   ideal_un = os.environ.get('idealistUserName')
   ideal_pw = os.environ.get('idealistPassword')
+  givep_un = os.environ.get('givepulseUserName')
+  givep_pw = os.environ.get('givepulsePassword')
   
   driver = webdriver.Firefox() # init Selenium
+  # ----- VOLUNTEER MATCH -----
   # Send automatic replies to new volunteer signups on
   # volunteer accounts that provide the email in their notification
   driver.get(WEBAPP_MAIN_URL + "?func=AutoReplyNoSeparateAuth")
@@ -110,7 +131,8 @@ def main():
     # Finally, verify that the AutoReplyNoSeparateAuth func completed
     find_script_complete(driver)
   finally:
-    print("AutoReplyNoSeparateAuth func completed")
+    print("AutoReplyNoSeparateAuth func completed") 
+  # ----- IDEALIST & GIVEPULSE -----
   # Next, run AutoReplySeparateAuth func
   driver.get(WEBAPP_MAIN_URL + "?func=AutoReplySeparateAuth")
   try:
@@ -118,14 +140,11 @@ def main():
   except:
     print("SCRIPT COMPLETE NOT LOCATED")
     # if Gmail requires auth, handle that
-    gmail_login(gmail_un, gmail_pw)
+    gmail_login(driver, gmail_un, gmail_pw)
     # Finally, verify that the AutoReplyNoSeparateAuth func completed
     find_script_complete(driver)
   finally:
     print("AutoReplySeparateAuth func completed")
-    elem = WebDriverWait(driver, IMPLICIT_WAIT_DURATION).until(
-      EC.presence_of_element_located((By.ID, "volunteer_signups"))
-    )
   # AutoReplySeparateAuth - retrieve all new signups
   new_signups_matches = driver.find_elements(By.CLASS_NAME, "volunteer_item")
   idealist_signups = []
@@ -139,8 +158,8 @@ def main():
       idealist_signups.append(volunteer)
     elif volunteer.site == "Givepulse":
       givepulse_signups.append(volunteer)
-  
-  # AutoReplySeparateAuth - log into Idealist, handle all 
+  # ----- IDEALIST -----
+  # AutoReplySeparateAuth - log into Idealist, get all volunteer emails 
   driver.get(IDEALIST_URL)
   login_btn = WebDriverWait(driver, IMPLICIT_WAIT_DURATION).until(
     EC.presence_of_element_located((By.CLASS_NAME, "PageHeader__LoginLink-sc-1ee2g2-1"))
@@ -149,10 +168,10 @@ def main():
   login_btn.click()
   login_email = driver.find_element(By.ID, "login-form-email")
   login_email.send_keys(ideal_un + Keys.ENTER)
-  time.sleep(3)
+  time.sleep(EXPLICIT_WAIT_DURATION)
   login_pw = driver.find_element(By.ID, "login-form-password")
   login_pw.send_keys(ideal_pw + Keys.ENTER)
-  time.sleep(3)
+  time.sleep(EXPLICIT_WAIT_DURATION)
   # for each idealist signup, gather email
   print(str(len(idealist_signups)) + " Idealist signups")
   for signup in idealist_signups:
@@ -164,13 +183,13 @@ def main():
     )
     listing_tiles = driver.find_elements(By.CLASS_NAME, "SearchTile-sc-1kv2zmo-2")
     listing_tiles[0].click() # assumes most recent listing!
-    time.sleep(3)
+    time.sleep(EXPLICIT_WAIT_DURATION)
     # in listing, find applicant, click
     applicant_search = WebDriverWait(driver, IMPLICIT_WAIT_DURATION).until(
       EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Search for applicant']"))
     )
     applicant_search.send_keys(signup.name + Keys.ENTER)
-    time.sleep(1)
+    time.sleep(EXPLICIT_WAIT_DURATION)
     possible_links = driver.find_elements(By.CLASS_NAME, "Link__RouterLink-sc-wn2s6u-1")
     # if applicant found, click link
     for link in possible_links:
@@ -192,6 +211,7 @@ def main():
       signup_email_found = True
     else:
       print("ERROR: APPLICANT NOT FOUND --> " + signup.name)
+  # ----- IDEALIST -----
   # AutoReplySeparateAuth - auto respond Idealist signups
   for signup in idealist_signups:
     safe_url = WEBAPP_MAIN_URL + "?func=SendAutoReply&site=Idealist&name=" + \
@@ -200,7 +220,62 @@ def main():
                             "&email=" + parse.quote_plus(signup.email)
     driver.get(safe_url)
     find_script_complete(driver)
-  #click into role listing
+  # ----- GIVEPULSE -----
+  # AutoReplySeparateAuth - log into GivePulse, get all volunteer emails
+  driver.get(GIVEPULSE_URL)
+  nav = WebDriverWait(driver, IMPLICIT_WAIT_DURATION).until(
+    EC.presence_of_element_located((By.ID, "yw0"))
+  )
+  # find and click Log In button
+  nav_btns = nav.find_elements(By.XPATH, ".//a")
+  for btn in nav_btns:
+    if "Log In" in btn.text:
+      btn.click()
+  # Login to GivePulse
+  email_input = WebDriverWait(driver, IMPLICIT_WAIT_DURATION).until(
+    EC.presence_of_element_located((By.ID, "LoginForm_email"))
+  )
+  email_input.send_keys(givep_un)
+  password_input = WebDriverWait(driver, IMPLICIT_WAIT_DURATION).until(
+    EC.presence_of_element_located((By.ID, "LoginForm_password"))
+  )
+  password_input.send_keys(givep_pw + Keys.ENTER)
+  # Go to registrations page
+  click_give_pulse_manage_registrations(driver)
+  # For each new volunteer, find email
+  print(str(len(givepulse_signups)) + " GivePulse signups")                             
+  for signup in givepulse_signups:
+    # refresh manage registrations page
+    click_give_pulse_manage_registrations(driver)
+    # search for volunteer by name
+    filters = WebDriverWait(driver, IMPLICIT_WAIT_DURATION).until(
+      EC.presence_of_element_located((By.CLASS_NAME, "filters"))
+    )
+    name_filter = filters.find_element(By.XPATH, ".//input[@name = 'Registration[user_full_name]']")
+    name_filter.send_keys(signup.name + Keys.ENTER)
+    # collect email from last (most recent) entry
+    time.sleep(SHORT_EXPLICIT_WAIT)
+    table = WebDriverWait(driver, IMPLICIT_WAIT_DURATION).until(
+      EC.presence_of_element_located((By.XPATH, ".//tbody"))
+    )
+    table_rows = table.find_elements(By.XPATH, ".//tr")
+    table_rows_correct_role = []
+    for row in table_rows:
+      if signup.role in row.find_element(By.XPATH, ".//td[3]/a").text:
+        table_rows_correct_role.append(row)
+    # last correct row is most recent (-1 index)
+    email = table_rows_correct_role[-1].find_element(By.XPATH, ".//td[5]").text
+    signup.email = email
+  # ----- GIVEPULSE -----
+  # AutoReplySeparateAuth - auto respond GivePulse signups
+  for signup in givepulse_signups:
+    safe_url = WEBAPP_MAIN_URL + "?func=SendAutoReply&site=Givepulse&name=" + \
+                            parse.quote_plus(signup.name) + "&role=" + \
+                            parse.quote_plus(signup.role) + \
+                            "&email=" + parse.quote_plus(signup.email)
+    driver.get(safe_url)
+    find_script_complete(driver)
+  
   # END SESSION
   driver.close()
   
