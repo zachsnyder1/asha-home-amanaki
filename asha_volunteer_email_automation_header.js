@@ -1,12 +1,24 @@
-const test_params = DocumentApp.openById("1iqCTejm6Nb1L-WzUyM30n9zlPYBpQKEEhSscQpmnnbY").
-                              getBody().getText();
-var email_pattern = /SENDEREMAIL:(.*)\n/g;
-var template_pattern = /TEMPLATEID:(.*)\n/g;
-var outdoc_pattern = /TEMPDOC:(.*)\n/g;
-const TEMPLATE_ID_TEST = template_pattern.exec(test_params)[1];
-const SENDER_TEST = email_pattern.exec(test_params)[1];
-const TEMPDOC_TEST = outdoc_pattern.exec(test_params)[1];
-const RESPONSE_SUBJECT = "Thanks for signing up to volunteer!"
+/**
+ * Load script parameters from separate Google doc
+ */
+const param_file = DocumentApp.openById("1iqCTejm6Nb1L-WzUyM30n9zlPYBpQKEEhSscQpmnnbY").
+                                        getBody().getText();
+var forward_email = /FORWARD_EMAIL:(.*)\n/i;
+var log_sheet_id = /LOG_SHEET_ID:(.*)\n/i;
+var template_id_volmatch = /TEMPLATE_ID_VOLUNTEER_MATCH:(.*)\n/i;
+var template_id_idealist = /TEMPLATE_ID_IDEALIST:(.*)\n/i;
+var template_id_givepulse = /TEMPLATE_ID_GIVEPULSE:(.*)\n/i;
+var response_subj_id_volmatch = /RESPONSE_SUBJECT_DOC_ID_VOLMATCH:(.*)\n/i;
+var response_subj_id_idealist = /RESPONSE_SUBJECT_DOC_ID_IDEALIST:(.*)\n/i;
+var response_subj_id_givepulse = /RESPONSE_SUBJECT_DOC_ID_GIVEPULSE:(.*)\n/i;
+const FORWARD_EMAIL = forward_email.exec(param_file)[1];
+const LOG_SHEET_ID = log_sheet_id.exec(param_file)[1];
+const TEMPLATE_ID_VOLMATCH = template_id_volmatch.exec(param_file)[1];
+const TEMPLATE_ID_IDEALIST = template_id_idealist.exec(param_file)[1];
+const TEMPLATE_ID_GIVEPULSE = template_id_givepulse.exec(param_file)[1];
+const SUBJECT_ID_VOLMATCH = response_subj_id_volmatch.exec(param_file)[1];
+const SUBJECT_ID_IDEALIST = response_subj_id_idealist.exec(param_file)[1];
+const SUBJECT_ID_GIVEPULSE = response_subj_id_givepulse.exec(param_file)[1];
 
 /**
  * Abstract Class AbstractVolunteerSiteProperties
@@ -20,6 +32,21 @@ class AbstractVolunteerSiteProperties {
     this.key_email = "||VOLUNTEER EMAIL||";
     this.extraction_dict = {};
     this.values_dict = {};
+  }
+  // METHOD: log email auto response event in log spreadsheet
+  logAutoResponse(log_sheet, params) {
+    var sheet = log_sheet.getSheets()[0]; // get first sheet on document
+    var last_row = log_sheet.getLastRow(); // find the last row with content
+    log_sheet.insertRowAfter(last_row); // add new log row to sheet
+    var cell_range = sheet.getRange(last_row+1, 1, 1, params.length+1);
+    // get date + time
+    var today = new Date();
+    var date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
+    var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+    var dateTime = [(date+' '+time)];
+    // set cell values
+    cell_range.setValues([dateTime.concat(params)]);
+    SpreadsheetApp.flush();
   }
 }
 
@@ -57,9 +84,7 @@ class VolunteerSite extends AbstractVolunteerSiteProperties {
       // find and return a value from the message, based on
       // the substrings that bracket the value
       var search_pattern = this.extraction_dict[keys[k]];
-      console.log("Search pattern: " + search_pattern);
       var search_result = search_pattern.exec(message_body);
-      console.log("Search result: " + search_result);
       this.values_dict[keys[k]] = search_result[1];
     }
   }
@@ -75,9 +100,11 @@ class VolunteerSiteNoSeparateAuth extends VolunteerSite {
     super();
   }
   // METHOD: Auto-reply to matched messages
-  autoReply(subject) {
+  autoReply(subject_doc_id, log_sheet) {
     // retrieve the template doc based on its ID
     var template = DocumentApp.openById(this.template_doc_id);
+    var subject_doc = DocumentApp.openById(subject_doc_id);
+    var subject = subject_doc.getBody().getText()
     // for each message, perform all replacements in replacement dict
     var m = 0;
     for (m = 0; m < this.matches.length; m++) {
@@ -97,6 +124,16 @@ class VolunteerSiteNoSeparateAuth extends VolunteerSite {
                                                          subject,
                                                          response_body);
       auto_email_to_volunteer.send();
+      // Add to log
+      var log_params = [
+            this.site_name,
+            this.values_dict[this.key_name],
+            this.values_dict[this.key_email],
+            this.values_dict[this.key_role],
+            this.template_doc_id,
+            subject_doc_id
+      ];
+      this.logAutoResponse(log_sheet, log_params);
     }
   }
 }
@@ -131,7 +168,6 @@ class VolunteerSiteSeparateAuth extends VolunteerSite {
       var message = this.matches[m].getMessages()[0];
       message.star();
       this.matches[m].markRead();
-      console.log("Plain body: " + message.getPlainBody());
       this.extractFromMessage(message.getPlainBody());
       var keys = Object.keys(this.extraction_dict);
       var k = 0;
@@ -145,7 +181,6 @@ class VolunteerSiteSeparateAuth extends VolunteerSite {
       }
       response_text += "</p>";
     }
-    console.log("HTML response: " + response_text);
     this.html_response.append(response_text);
   }
 }
@@ -159,7 +194,7 @@ class Idealist extends VolunteerSiteSeparateAuth {
   constructor(template_doc_id, html) {
     super();
     this.subj_search = "You have a new applicant to review on Idealist!";
-    this.sender_search = SENDER_TEST //"support@idealist.org";
+    this.sender_search = FORWARD_EMAIL // "support@idealist.org";
     this.extraction_dict[this.key_role] = /You can log in to see their information here:\n>\n> (.*)\n/;
     this.extraction_dict[this.key_name] = /> \[(.*)\]\(/;
     this.template_doc_id = template_doc_id;
@@ -177,7 +212,7 @@ class GivePulse extends VolunteerSiteSeparateAuth {
   constructor(template_doc_id, html) {
     super();
     this.subj_search = "updated registration for";
-    this.sender_search = SENDER_TEST //"notification@givepulse.com";
+    this.sender_search = FORWARD_EMAIL // "notification@givepulse.com";
     this.extraction_dict[this.key_role] = /has just registered to \[(.*)\]\(.*\) with \[Asha/i;
     this.extraction_dict[this.key_name] = /> (.*) has just registered to \[/i;
     this.template_doc_id = template_doc_id;
@@ -195,41 +230,29 @@ class VolunteerMatch extends VolunteerSiteNoSeparateAuth {
   constructor(template_doc_id) {
     super();
     this.subj_search = "Someone wants to help: ";
-    this.sender_search = SENDER_TEST //"noreply@volunteermatch.org";
+    this.sender_search = FORWARD_EMAIL // "noreply@volunteermatch.org";
     this.extraction_dict[this.key_role] = /Title: (.*)\n/;
     this.extraction_dict[this.key_name] = /Name: (.*)\n/;
     this.extraction_dict[this.key_email] = /Email: (.*)\n/;
     this.template_doc_id = template_doc_id;
-  }
-}
-
-/**
- * Concrete Class Benevity
- *
- * @class Benevity
- */
-class Benevity extends VolunteerSiteNoSeparateAuth {
-  constructor(template_doc_id) {
-    super();
-    /*this.subj_search = "";
-    this.sender_search = SENDER_TEST //"";
-    this.extraction_dict[this.key_role] = /Title: (.*)\n/g;
-    this.extraction_dict[this.key_name] = /Name: (.*)\n/g;
-    this.extraction_dict[this.key_email] = /Email: (.*)\n/g;
-    this.template_doc_id = template_doc_id;*/
+    this.site_name = "Volunteer Match"
   }
 }
 
 class SeparateAuthSignup extends AbstractVolunteerSiteProperties {
-  constructor(template_doc_id, name, email, role) {
+  constructor(template_doc_id, name, email, role, site_name) {
     super();
     this.template_doc_id = template_doc_id;
     this.extraction_dict[this.key_name] = name;
     this.extraction_dict[this.key_email] = email;
     this.extraction_dict[this.key_role] = role;
+    this.site_name = site_name;
   }
   // METHOD: send message
-  autoReply(subject) {
+  autoReply(subject_doc_id, log_sheet) {
+    // get email subject from document
+    var subject_doc = DocumentApp.openById(subject_doc_id);
+    var subject = subject_doc.getBody().getText()
     // retrieve the template doc based on its ID
     var template = DocumentApp.openById(this.template_doc_id);
     var response_body = template.getBody().getText();
@@ -243,5 +266,15 @@ class SeparateAuthSignup extends AbstractVolunteerSiteProperties {
                                                        subject,
                                                        response_body);
     auto_email_to_volunteer.send();
+    // Add to log
+    var log_params = [
+            this.site_name,
+            this.extraction_dict[this.key_name],
+            this.extraction_dict[this.key_email],
+            this.extraction_dict[this.key_role],
+            this.template_doc_id,
+            subject_doc_id
+      ];
+      this.logAutoResponse(log_sheet, log_params);
   }
 }
