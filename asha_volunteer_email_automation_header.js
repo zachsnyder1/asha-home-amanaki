@@ -3,7 +3,7 @@
  */
 const param_file = DocumentApp.openById("1iqCTejm6Nb1L-WzUyM30n9zlPYBpQKEEhSscQpmnnbY").
                                         getBody().getText();
-var forward_email = /FORWARD_EMAIL:(.*)\n/i;
+//var forward_email = /FORWARD_EMAIL:(.*)\n/i;
 var log_sheet_id = /LOG_SHEET_ID:(.*)\n/i;
 var template_id_volmatch = /TEMPLATE_ID_VOLUNTEER_MATCH:(.*)\n/i;
 var template_id_idealist = /TEMPLATE_ID_IDEALIST:(.*)\n/i;
@@ -11,7 +11,7 @@ var template_id_givepulse = /TEMPLATE_ID_GIVEPULSE:(.*)\n/i;
 var response_subj_id_volmatch = /RESPONSE_SUBJECT_DOC_ID_VOLMATCH:(.*)\n/i;
 var response_subj_id_idealist = /RESPONSE_SUBJECT_DOC_ID_IDEALIST:(.*)\n/i;
 var response_subj_id_givepulse = /RESPONSE_SUBJECT_DOC_ID_GIVEPULSE:(.*)\n/i;
-const FORWARD_EMAIL = forward_email.exec(param_file)[1];
+//const FORWARD_EMAIL = forward_email.exec(param_file)[1];
 const LOG_SHEET_ID = log_sheet_id.exec(param_file)[1];
 const TEMPLATE_ID_VOLMATCH = template_id_volmatch.exec(param_file)[1];
 const TEMPLATE_ID_IDEALIST = template_id_idealist.exec(param_file)[1];
@@ -78,6 +78,7 @@ class VolunteerSite extends AbstractVolunteerSiteProperties {
   }
   // METHOD: Given a message, extract values
   extractFromMessage(message_body) {
+    console.log(message_body);
     var keys = Object.keys(this.extraction_dict);
     var k = 0;
     for (k = 0; k < keys.length; k++) {
@@ -86,6 +87,7 @@ class VolunteerSite extends AbstractVolunteerSiteProperties {
       var search_pattern = this.extraction_dict[keys[k]];
       var search_result = search_pattern.exec(message_body);
       this.values_dict[keys[k]] = search_result[1];
+      console.log("Found param: " + search_result[1]);
     }
   }
 }
@@ -194,7 +196,7 @@ class Idealist extends VolunteerSiteSeparateAuth {
   constructor(template_doc_id, html) {
     super();
     this.subj_search = "You have a new applicant to review on Idealist!";
-    this.sender_search = FORWARD_EMAIL // "support@idealist.org";
+    this.sender_search = "support@idealist.org";
     this.extraction_dict[this.key_role] = /You can log in to see their information here:[\s>]+(\w[\w ]+)(?:\r\n|\r|\n)/;
     this.extraction_dict[this.key_name] = /information here:[\s>]+(?:\w[\w ]+)[\s>]+\[(\w[\w ]+)\]\(/;
     this.template_doc_id = template_doc_id;
@@ -212,7 +214,7 @@ class GivePulse extends VolunteerSiteSeparateAuth {
   constructor(template_doc_id, html) {
     super();
     this.subj_search = "updated registration for";
-    this.sender_search = FORWARD_EMAIL // "notification@givepulse.com";
+    this.sender_search = "notification@givepulse.com";
     this.extraction_dict[this.key_role] = /has just registered to \[(.*)\]\(.*\) with \[Asha/i;
     this.extraction_dict[this.key_name] = /(?:> |\s+)([A-z][A-z ]+) has just registered to \[/i;
     this.template_doc_id = template_doc_id;
@@ -230,7 +232,7 @@ class VolunteerMatch extends VolunteerSiteNoSeparateAuth {
   constructor(template_doc_id) {
     super();
     this.subj_search = "Someone wants to help: ";
-    this.sender_search = FORWARD_EMAIL // "noreply@volunteermatch.org";
+    this.sender_search = "noreply@volunteermatch.org";
     this.extraction_dict[this.key_role] = /Title: (\w[\w ]+)[\s>]+/;
     this.extraction_dict[this.key_name] = /Name: (\w[\w ]+)[\s>]+/;
     this.extraction_dict[this.key_email] = /Email: (\w.+)[\s>]+/;
