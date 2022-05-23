@@ -195,8 +195,8 @@ class Idealist extends VolunteerSiteSeparateAuth {
     super();
     this.subj_search = "You have a new applicant to review on Idealist!";
     this.sender_search = FORWARD_EMAIL // "support@idealist.org";
-    this.extraction_dict[this.key_role] = /You can log in to see their information here:\n>\n> (.*)\n/;
-    this.extraction_dict[this.key_name] = /> \[(.*)\]\(/;
+    this.extraction_dict[this.key_role] = /You can log in to see their information here:[\s>]+(\w[\w ]+)(?:\r\n|\r|\n)/;
+    this.extraction_dict[this.key_name] = /information here:[\s>]+(?:\w[\w ]+)[\s>]+\[(\w[\w ]+)\]\(/;
     this.template_doc_id = template_doc_id;
     this.html_response = html;
     this.site_name = "Idealist";
@@ -214,7 +214,7 @@ class GivePulse extends VolunteerSiteSeparateAuth {
     this.subj_search = "updated registration for";
     this.sender_search = FORWARD_EMAIL // "notification@givepulse.com";
     this.extraction_dict[this.key_role] = /has just registered to \[(.*)\]\(.*\) with \[Asha/i;
-    this.extraction_dict[this.key_name] = /> (.*) has just registered to \[/i;
+    this.extraction_dict[this.key_name] = /(?:> |\s+)([A-z][A-z ]+) has just registered to \[/i;
     this.template_doc_id = template_doc_id;
     this.html_response = html;
     this.site_name = "Givepulse";
@@ -231,9 +231,9 @@ class VolunteerMatch extends VolunteerSiteNoSeparateAuth {
     super();
     this.subj_search = "Someone wants to help: ";
     this.sender_search = FORWARD_EMAIL // "noreply@volunteermatch.org";
-    this.extraction_dict[this.key_role] = /Title: (.*)\n/;
-    this.extraction_dict[this.key_name] = /Name: (.*)\n/;
-    this.extraction_dict[this.key_email] = /Email: (.*)\n/;
+    this.extraction_dict[this.key_role] = /Title: (\w[\w ]+)[\s>]+/;
+    this.extraction_dict[this.key_name] = /Name: (\w[\w ]+)[\s>]+/;
+    this.extraction_dict[this.key_email] = /Email: (\w.+)[\s>]+/;
     this.template_doc_id = template_doc_id;
     this.site_name = "Volunteer Match"
   }
