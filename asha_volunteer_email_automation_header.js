@@ -97,7 +97,9 @@ class VolunteerSite extends AbstractVolunteerSiteProperties {
           "...", // No values dict keys
           "...", // No template doc ID
           "...", // No subj doc ID
-          "ERROR WHILE PROCESSING MESSAGE: " + message_body
+          "ERROR WHILE PROCESSING MESSAGE.\n\n------------\n\nMESSAGE BODY:\n\n" +
+          message_body +
+          "\n\n------------\n\nSEARCH STRING:\n\n" + search_pattern
       ];
       this.logAutoResponse(log_params);
       throw "No regex match while processing email from " + this.site_name +
