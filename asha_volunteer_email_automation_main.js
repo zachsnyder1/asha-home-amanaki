@@ -3,16 +3,16 @@ function doGet(e) {
   var html = HtmlService.createHtmlOutput();
   var log_sheet = SpreadsheetApp.openById(LOG_SHEET_ID);
   if(e["parameters"]["func"] == "AutoReplyNoSeparateAuth") {
-    var volmatch = new VolunteerMatch(TEMPLATE_ID_VOLMATCH);
+    var volmatch = new VolunteerMatch(TEMPLATE_ID_VOLMATCH, log_sheet);
     volmatch.getNewMatches();
-    volmatch.autoReply(SUBJECT_ID_VOLMATCH, log_sheet);
+    volmatch.autoReply(SUBJECT_ID_VOLMATCH);
     html.append("<p id=\"script_complete\">AutoReplyNoSeparateAuth complete<\p>");
   } else if (e["parameters"]["func"] == "AutoReplySeparateAuth") {
-    var ideal = new Idealist(TEMPLATE_ID_IDEALIST, html);
+    var ideal = new Idealist(TEMPLATE_ID_IDEALIST, html, log_sheet);
     VolunteerSiteSeparateAuth.initResponseHtml(html);
     ideal.getNewMatches();
     ideal.outputToResponse();
-    var gp = new GivePulse(TEMPLATE_ID_GIVEPULSE, html);
+    var gp = new GivePulse(TEMPLATE_ID_GIVEPULSE, html, log_sheet);
     gp.getNewMatches();
     gp.outputToResponse();
     VolunteerSiteSeparateAuth.finalizeResponseHTML(html);
@@ -34,16 +34,18 @@ function doGet(e) {
                                          signup_name,
                                          signup_email,
                                          signup_role,
-                                         signup_site);
-      ideal.autoReply(SUBJECT_ID_IDEALIST, log_sheet); // change to correct template id
+                                         signup_site,
+                                         log_sheet);
+      ideal.autoReply(SUBJECT_ID_IDEALIST); // change to correct template id
       html.append("<p id=\"script_complete\">AUTO REPLY SENT TO:" + signup_name + "<\p>");
     } else if (signup_site=="Givepulse") {
       var gp = new SeparateAuthSignup(TEMPLATE_ID_GIVEPULSE,
                                       signup_name,
                                       signup_email,
                                       signup_role,
-                                      signup_site);
-      gp.autoReply(SUBJECT_ID_GIVEPULSE, log_sheet); // change to correct template id
+                                      signup_site,
+                                      log_sheet);
+      gp.autoReply(SUBJECT_ID_GIVEPULSE); // change to correct template id
       html.append("<p id=\"script_complete\">AUTO REPLY SENT TO:" + signup_name + "<\p>");
     } else {
       html.append("<p id=\"script_complete\">ERROR: INCORRECT SITE PARAMATER<\p>");

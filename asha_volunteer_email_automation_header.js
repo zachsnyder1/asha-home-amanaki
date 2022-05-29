@@ -32,12 +32,13 @@ class AbstractVolunteerSiteProperties {
     this.key_email = "||VOLUNTEER EMAIL||";
     this.extraction_dict = {};
     this.values_dict = {};
+    this.log_sheet = null;
   }
   // METHOD: log email auto response event in log spreadsheet
-  logAutoResponse(log_sheet, params) {
-    var sheet = log_sheet.getSheets()[0]; // get first sheet on document
-    var last_row = log_sheet.getLastRow(); // find the last row with content
-    log_sheet.insertRowAfter(last_row); // add new log row to sheet
+  logAutoResponse(params) {
+    var sheet = this.log_sheet.getSheets()[0]; // get first sheet on document
+    var last_row = this.log_sheet.getLastRow(); // find the last row with content
+    this.log_sheet.insertRowAfter(last_row); // add new log row to sheet
     var cell_range = sheet.getRange(last_row+1, 1, 1, params.length+1);
     // get date + time
     var today = new Date();
@@ -78,7 +79,6 @@ class VolunteerSite extends AbstractVolunteerSiteProperties {
   }
   // METHOD: Given a message, extract values
   extractFromMessage(message_body) {
-    console.log(message_body);
     var keys = Object.keys(this.extraction_dict);
     var k = 0;
     for (k = 0; k < keys.length; k++) {
@@ -86,8 +86,23 @@ class VolunteerSite extends AbstractVolunteerSiteProperties {
       // the substrings that bracket the value
       var search_pattern = this.extraction_dict[keys[k]];
       var search_result = search_pattern.exec(message_body);
-      this.values_dict[keys[k]] = search_result[1];
-      console.log("Found param: " + search_result[1]);
+      try {
+        this.values_dict[keys[k]] = search_result[1];
+      } catch {
+        // Add to log
+        var log_params = [
+          this.site_name,
+          "...", // No values dict keys
+          "...", // No values dict keys
+          "...", // No values dict keys
+          "...", // No template doc ID
+          "...", // No subj doc ID
+          "ERROR WHILE PROCESSING MESSAGE: " + message_body
+      ];
+      this.logAutoResponse(log_params);
+      throw "No regex match while processing email from " + this.site_name +
+            ": see LOG SHEET";
+      }
     }
   }
 }
@@ -102,7 +117,7 @@ class VolunteerSiteNoSeparateAuth extends VolunteerSite {
     super();
   }
   // METHOD: Auto-reply to matched messages
-  autoReply(subject_doc_id, log_sheet) {
+  autoReply(subject_doc_id) {
     // retrieve the template doc based on its ID
     var template = DocumentApp.openById(this.template_doc_id);
     var subject_doc = DocumentApp.openById(subject_doc_id);
@@ -135,7 +150,7 @@ class VolunteerSiteNoSeparateAuth extends VolunteerSite {
             this.template_doc_id,
             subject_doc_id
       ];
-      this.logAutoResponse(log_sheet, log_params);
+      this.logAutoResponse(log_params);
     }
   }
 }
@@ -193,7 +208,7 @@ class VolunteerSiteSeparateAuth extends VolunteerSite {
  * @class Idealist
  */
 class Idealist extends VolunteerSiteSeparateAuth {
-  constructor(template_doc_id, html) {
+  constructor(template_doc_id, html, log_sheet) {
     super();
     this.subj_search = "You have a new applicant to review on Idealist!";
     this.sender_search = "support@idealist.org";
@@ -202,6 +217,7 @@ class Idealist extends VolunteerSiteSeparateAuth {
     this.template_doc_id = template_doc_id;
     this.html_response = html;
     this.site_name = "Idealist";
+    this.log_sheet = log_sheet;
   }
 }
 
@@ -211,7 +227,7 @@ class Idealist extends VolunteerSiteSeparateAuth {
  * @class GivePulse
  */
 class GivePulse extends VolunteerSiteSeparateAuth {
-  constructor(template_doc_id, html) {
+  constructor(template_doc_id, html, log_sheet) {
     super();
     this.subj_search = "updated registration for";
     this.sender_search = "notification@givepulse.com";
@@ -220,6 +236,7 @@ class GivePulse extends VolunteerSiteSeparateAuth {
     this.template_doc_id = template_doc_id;
     this.html_response = html;
     this.site_name = "Givepulse";
+    this.log_sheet = log_sheet;
   }
 }
 
@@ -229,7 +246,7 @@ class GivePulse extends VolunteerSiteSeparateAuth {
  * @class VolunteerMatch
  */
 class VolunteerMatch extends VolunteerSiteNoSeparateAuth {
-  constructor(template_doc_id) {
+  constructor(template_doc_id, log_sheet) {
     super();
     this.subj_search = "Someone wants to help: ";
     this.sender_search = "noreply@volunteermatch.org";
@@ -238,20 +255,22 @@ class VolunteerMatch extends VolunteerSiteNoSeparateAuth {
     this.extraction_dict[this.key_email] = /Email: (\w.+)[\s>]+/;
     this.template_doc_id = template_doc_id;
     this.site_name = "Volunteer Match"
+    this.log_sheet = log_sheet;
   }
 }
 
 class SeparateAuthSignup extends AbstractVolunteerSiteProperties {
-  constructor(template_doc_id, name, email, role, site_name) {
+  constructor(template_doc_id, name, email, role, site_name, log_sheet) {
     super();
     this.template_doc_id = template_doc_id;
     this.extraction_dict[this.key_name] = name;
     this.extraction_dict[this.key_email] = email;
     this.extraction_dict[this.key_role] = role;
     this.site_name = site_name;
+    this.log_sheet = log_sheet;
   }
   // METHOD: send message
-  autoReply(subject_doc_id, log_sheet) {
+  autoReply(subject_doc_id) {
     // get email subject from document
     var subject_doc = DocumentApp.openById(subject_doc_id);
     var subject = subject_doc.getBody().getText()
@@ -277,6 +296,6 @@ class SeparateAuthSignup extends AbstractVolunteerSiteProperties {
             this.template_doc_id,
             subject_doc_id
       ];
-      this.logAutoResponse(log_sheet, log_params);
+      this.logAutoResponse(log_params);
   }
 }
