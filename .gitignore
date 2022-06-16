@@ -1,3 +1,4 @@
 
 geckodriver.log
 .env
+.DS_Store

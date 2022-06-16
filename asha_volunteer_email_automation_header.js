@@ -1,7 +1,7 @@
 /**
  * Load script parameters from separate Google doc
  */
-const param_file = DocumentApp.openById("1iqCTejm6Nb1L-WzUyM30n9zlPYBpQKEEhSscQpmnnbY").
+const param_file = DocumentApp.openById("1Ifwp5niO-t1z4TOaoOtGT1WOVXKSl0WlkJBuQ4bYIOY").
                                         getBody().getText();
 //var forward_email = /FORWARD_EMAIL:(.*)\n/i;
 var log_sheet_id = /LOG_SHEET_ID:(.*)\n/i;
@@ -100,10 +100,10 @@ class VolunteerSite extends AbstractVolunteerSiteProperties {
           "ERROR WHILE PROCESSING MESSAGE.\n\n------------\n\nMESSAGE BODY:\n\n" +
           message_body +
           "\n\n------------\n\nSEARCH STRING:\n\n" + search_pattern
-      ];
-      this.logAutoResponse(log_params);
-      throw "No regex match while processing email from " + this.site_name +
-            ": see LOG SHEET";
+        ];
+        this.logAutoResponse(log_params);
+        throw "No regex match while processing email from " + this.site_name +
+              ": see LOG SHEET";
       }
     }
   }
@@ -233,8 +233,8 @@ class GivePulse extends VolunteerSiteSeparateAuth {
     super();
     this.subj_search = "updated registration for";
     this.sender_search = "notification@givepulse.com";
-    this.extraction_dict[this.key_role] = /has just registered to \[(.*)\]\(.*\) with \[Asha/i;
-    this.extraction_dict[this.key_name] = /(?:> |\s+)([A-z][A-z ]+) has just registered to \[/i;
+    this.extraction_dict[this.key_role] = /has just registered to (\w[\w ]+) with Asha Hope Amanaki!/i;
+    this.extraction_dict[this.key_name] = /(?:> |\s+)([A-z][A-z ]+) has just registered to/i;
     this.template_doc_id = template_doc_id;
     this.html_response = html;
     this.site_name = "Givepulse";
