@@ -1,0 +1,3 @@
+This is a set of automation scripts I wrote for the nonprofit [Asha Hope Amanaki](https://ashahopeamanaki.org/) to allow them to automatically respond to new volunteer signups from the three volunteer recruitment websites they use. It uses [Google Apps Script](https://developers.google.com/apps-script) to interface with Google Docs, Google Sheets, and Gmail. It is integrated with a Python script that runs on a local machine and makes calls to Apps Script using [Selenium](https://www.selenium.dev/). For more info, see the README below.
+
+See README here: https://docs.google.com/document/d/1pGtGYqNE2Hd_L_FPdi0GItII9ktqgmbEgVz0gj9Mpk0/edit?usp=sharing
